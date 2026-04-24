@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>FileAgent - AI文件助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 900px;
+            height: 85vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* === 顶部工具栏 === */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            gap: 10px;
+        }
+
+        .toolbar-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            flex-shrink: 0;
+        }
+
+        .toolbar-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+        }
+
+        .toolbar-btn:active {
+            transform: scale(0.95);
+        }
+
+        .session-select-wrapper {
+            position: relative;
+            flex: 1;
+        }
+
+        .session-select {
+            width: 100%;
+            padding: 8px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 13px;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.3s;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 30px;
+        }
+
+        .session-select:focus {
+            border-color: #667eea;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 20px;
+            margin-bottom: 3px;
+        }
+
+        .chat-header p {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.bot {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-label {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .message.user .message-label {
+            text-align: right;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        #sendButton {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #sendButton:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #sendButton:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 18px;
+            background: white;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .skill-hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .skill-hint code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+
+        /* 欢迎消息 */
+        .welcome-msg {
+            text-align: center;
+            color: #888;
+            padding: 40px 20px;
+        }
+
+        .welcome-msg h2 {
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .welcome-msg p {
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .session-id-label {
+            font-size: 11px;
+            color: #aaa;
+            padding: 2px 8px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        /* === 知识库上传按钮 === */
+        .kb-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #fff;
+            color: #667eea;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .kb-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+            background: #f0f0ff;
+        }
+
+        .kb-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* === 文件附件按钮 === */
+        .attach-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: #fff;
+            color: #667eea;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .attach-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+            background: #f0f0ff;
+        }
+
+        /* === 附件预览 === */
+        .file-attach-preview {
+            display: none;
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .file-attach-preview.visible {
+            display: flex;
+        }
+
+        .attach-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #e8e8ff;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .attach-chip-remove {
+            cursor: pointer;
+            color: #999;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .attach-chip-remove:hover {
+            color: #e74c3c;
+        }
+
+        .attach-clear-all {
+            font-size: 12px;
+            color: #e74c3c;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .attach-clear-all:hover {
+            text-decoration: underline;
+        }
+
+        .kb-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #e74c3c;
+            color: white;
+            font-size: 10px;
+            min-width: 16px;
+            height: 16px;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0 3px;
+        }
+
+        .kb-badge.visible {
+            display: flex;
+        }
+
+        /* === 知识库面板 === */
+        .kb-panel-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .kb-panel-overlay.open {
+            display: flex;
+        }
+
+        .kb-panel {
+            background: white;
+            border-radius: 16px;
+            width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .kb-panel-header {
+            padding: 18px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kb-panel-header h3 {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .kb-panel-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: #f0f0f0;
+            color: #666;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .kb-panel-close:hover {
+            background: #e0e0e0;
+        }
+
+        .kb-panel-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* 上传区域 */
+        .kb-upload-area {
+            border: 2px dashed #d0d0d0;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s, background 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .kb-upload-area:hover {
+            border-color: #667eea;
+            background: #f8f8ff;
+        }
+
+        .kb-upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .kb-upload-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .kb-upload-text {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .kb-upload-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+        }
+
+        /* 文件列表 */
+        .kb-file-list {
+            margin-top: 10px;
+        }
+
+        .kb-file-list h4 {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .kb-file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+
+        .kb-file-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .kb-file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .kb-file-name {
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .kb-file-meta {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .kb-file-delete {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: none;
+            background: #fee;
+            color: #e74c3c;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .kb-file-delete:hover {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .kb-empty {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            padding: 20px;
+        }
+
+        .kb-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #27ae60;
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #e8f8f0;
+            border-radius: 8px;
+        }
+
+        .kb-status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #27ae60;
+        }
+
+        /* 知识库提示消息 */
+        .kb-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .kb-toast.success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .kb-toast.error {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .kb-toast.info {
+            background: #667eea;
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* 消息内知识库引用样式 */
+        .kb-ref {
+            font-size: 11px;
+            color: #667eea;
+            background: #f0f0ff;
+            padding: 4px 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 顶部工具栏 -->
+        <div class="toolbar">
+            <button class="toolbar-btn" id="newChatBtn" title="新聊天">+</button>
+            <button class="kb-btn" id="kbBtn" title="知识库">
+                📚
+                <span class="kb-badge" id="kbBadge">0</span>
+            </button>
+            <button class="attach-btn" id="attachBtn" title="添加文件（图片/PDF/Word/TXT）">📎</button>
+            <input type="file" id="fileAttachInput" style="display:none"
+                   accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.doc,.docx,.txt,.md,.csv,.json,.xml,.html,.css,.js,.java,.py,.ts,.go,.rs,.c,.cpp"
+                   multiple />
+            <div class="session-select-wrapper">
+                <select class="session-select" id="sessionSelect">
+                    <option value="">加载中...</option>
+                </select>
+            </div>
+            <span class="session-id-label" id="sessionLabel">当前：无</span>
+        </div>
+
+        <!-- 知识库面板 -->
+        <div class="kb-panel-overlay" id="kbPanelOverlay">
+            <div class="kb-panel">
+                <div class="kb-panel-header">
+                    <h3>📚 知识库</h3>
+                    <button class="kb-panel-close" id="kbPanelClose">✕</button>
+                </div>
+                <div class="kb-panel-body">
+                    <div id="kbStatusArea"></div>
+                    <div class="kb-upload-area" id="kbUploadArea">
+                        <div class="kb-upload-icon">📄</div>
+                        <div class="kb-upload-text">点击或拖拽文件到此处上传</div>
+                        <div class="kb-upload-hint">支持 Word、PDF、PPT、Excel、TXT</div>
+                        <input type="file" id="kbFileInput" style="display:none"
+                               accept=".txt,.doc,.docx,.pdf,.ppt,.pptx,.xls,.xlsx" />
+                    </div>
+                    <div class="kb-file-list" id="kbFileList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件附件预览区 -->
+        <div class="file-attach-preview" id="fileAttachPreview">
+            <!-- Chips will be added dynamically -->
+        </div>
+
+        <!-- 标题栏 -->
+        <div class="chat-header">
+            <h1>FileAgent</h1>
+            <p>AI智能文件助手 - 支持流式对话和本地文件管理</p>
+        </div>
+
+        <!-- 消息区域 -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- 默认欢迎消息 -->
+            <div class="welcome-msg" id="welcomeMsg">
+                <h2>欢迎使用 FileAgent</h2>
+                <p>选择一个历史聊天继续对话，或者点击左上角 <b>+</b> 开启新聊天</p>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="输入消息... 直接用自然语言描述你的需求"
+                    autocomplete="off"
+                />
+                <button id="sendButton">发送</button>
+            </div>
+            <div class="skill-hint">
+                示例: "看看有哪些磁盘" | "列出 D:/workspace 文件夹" | "读取 D:/test.txt" | "创建 D:/new.txt 内容为 你好"
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const sessionSelect = document.getElementById('sessionSelect');
+        const sessionLabel = document.getElementById('sessionLabel');
+        const welcomeMsg = document.getElementById('welcomeMsg');
+
+        // File attachment elements
+        const attachBtn = document.getElementById('attachBtn');
+        const fileAttachInput = document.getElementById('fileAttachInput');
+        const fileAttachPreview = document.getElementById('fileAttachPreview');
+
+        // 每个浏览器 tab 独立 sessionId（不持久化到 localStorage）
+        let sessionId = '';
+        let isStreaming = false;
+        let sessionList = []; // 缓存会话列表
+
+        // File attachments for current message
+        let attachedFiles = []; // Array of {name, dataUrl, type}
+
+        /**
+         * Update the file attachment preview chips
+         */
+        function updateAttachPreview() {
+            if (attachedFiles.length === 0) {
+                fileAttachPreview.classList.remove('visible');
+                fileAttachPreview.innerHTML = '';
+                return;
+            }
+            fileAttachPreview.classList.add('visible');
+            let html = '';
+            attachedFiles.forEach((f, idx) => {
+                html += `<span class="attach-chip">📄 ${f.name}
+                    <span class="attach-chip-remove" onclick="removeAttachedFile(${idx})">✕</span>
+                </span>`;
+            });
+            html += `<span class="attach-clear-all" onclick="clearAttachedFiles()">清除全部</span>`;
+            fileAttachPreview.innerHTML = html;
+        }
+
+        /**
+         * Remove a specific attached file
+         */
+        window.removeAttachedFile = function(idx) {
+            attachedFiles.splice(idx, 1);
+            updateAttachPreview();
+        };
+
+        /**
+         * Clear all attached files
+         */
+        window.clearAttachedFiles = function() {
+            attachedFiles = [];
+            updateAttachPreview();
+        };
+
+        /**
+         * Convert a File to base64 data URL
+         */
+        function fileToDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        /**
+         * Convert a File to plain text (for text files)
+         */
+        function fileToText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        /**
+         * Handle file attachment selection
+         */
+        async function handleFileSelect(files) {
+            for (const file of files) {
+                try {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    const textExts = ['txt','md','csv','json','xml','html','css','js','java','py','ts','go','rs','c','cpp'];
+
+                    let dataUrl;
+                    if (textExts.includes(ext)) {
+                        dataUrl = await fileToText(file);
+                        attachedFiles.push({ name: file.name, dataUrl, type: 'text' });
+                    } else {
+                        dataUrl = await fileToDataUrl(file);
+                        attachedFiles.push({ name: file.name, dataUrl, type: 'binary' });
+                    }
+                    showToast(`✅ 已添加: ${file.name}`, 'success');
+                } catch (e) {
+                    showToast(`❌ 读取文件失败: ${file.name}`, 'error');
+                }
+            }
+            updateAttachPreview();
+        }
+
+        // Attach button click
+        attachBtn.addEventListener('click', () => fileAttachInput.click());
+
+        // File input change
+        fileAttachInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files);
+                e.target.value = '';
+            }
+        });
+
+        // Drag and drop on the whole chat input area
+        document.addEventListener('dragover', (e) => e.preventDefault());
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelect(e.dataTransfer.files);
+            }
+        });
+
+        /**
+         * 生成新的会话 ID（使用时间戳格式）
+         */
+        function generateSessionId() {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+        }
+
+        /**
+         * 创建新聊天
+         */
+        function createNewChat() {
+            sessionId = generateSessionId();
+            sessionLabel.textContent = '当前：' + sessionId;
+            // 清空消息区域，显示欢迎语
+            chatMessages.innerHTML = `
+                <div class="message bot">
+                    <div>
+                        <div class="message-label">FileAgent</div>
+                        <div class="message-content">你好！我是FileAgent，你的AI文件助手。我可以直接帮你：
+
+- 查看磁盘信息和文件大小
+- 浏览、创建、编辑和删除文件
+- 回答各种问题
+
+你可以直接用自然语言告诉我你的需求，例如：
+"帮我看看有哪些磁盘"
+"列出D盘workspace文件夹"
+"读取 D:/test.txt 的内容"
+
+有什么可以帮助你的吗？</div>
+                    </div>
+                </div>`;
+            messageInput.focus();
+            // 选中新创建的会话（它还没有出现在下拉列表中，直到发送第一条消息）
+            refreshSessionList();
+        }
+
+        /**
+         * 刷新会话下拉列表
+         */
+        async function refreshSessionList() {
+            try {
+                const res = await fetch('/api/chat/sessions');
+                const sessions = await res.json();
+                sessionList = sessions;
+
+                // 保存当前选中的值
+                const currentVal = sessionSelect.value;
+
+                // 构建下拉选项
+                let html = '<option value="">-- 选择历史聊天 --</option>';
+                if (sessions.length === 0) {
+                    html += '<option value="__new__">+ 新建聊天</option>';
+                } else {
+                    for (const s of sessions) {
+                        const selected = (s.sessionId === sessionId) ? ' selected' : '';
+                        html += `<option value="${s.sessionId}"${selected}>${s.displayName} (${s.messageCount}条)</option>`;
+                    }
+                    html += '<option value="__new__">+ 新建聊天</option>';
+                }
+                sessionSelect.innerHTML = html;
+
+                // 如果当前会话在下拉列表中存在，选中它
+                if (sessionId && sessions.some(s => s.sessionId === sessionId)) {
+                    sessionSelect.value = sessionId;
+                }
+            } catch (e) {
+                console.error('加载会话列表失败', e);
+            }
+        }
+
+        /**
+         * 选择会话（加载历史记录并恢复上下文）
+         */
+        async function selectSession(sid) {
+            if (!sid || sid === '__new__') {
+                createNewChat();
+                return;
+            }
+
+            sessionId = sid;
+            sessionLabel.textContent = '当前：' + sid;
+
+            // 从后端加载历史消息
+            try {
+                const res = await fetch('/api/chat/session/' + encodeURIComponent(sid));
+                const msgs = await res.json();
+
+                // 清空消息区域
+                chatMessages.innerHTML = '';
+
+                if (msgs.length === 0) {
+                    // 空记录
+                    chatMessages.innerHTML = `
+                        <div class="message bot">
+                            <div>
+                                <div class="message-label">FileAgent</div>
+                                <div class="message-content">这是一个空聊天，开始对话吧！</div>
+                            </div>
+                        </div>`;
+                } else {
+                    // 渲染历史消息
+                    for (const msg of msgs) {
+                        const isUser = (msg.role === 'user');
+                        addMessage(msg.content, isUser, false);
+                    }
+                    // 滚动到底部
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            } catch (e) {
+                console.error('加载会话失败', e);
+                addMessage('加载历史消息失败: ' + e.message, false);
+            }
+
+            messageInput.focus();
+            loadKBFiles(); // 加载知识库文件
+        }
+
+        // =====================================================
+        // === 知识库管理 ===
+        // =====================================================
+
+        const kbBtn = document.getElementById('kbBtn');
+        const kbBadge = document.getElementById('kbBadge');
+        const kbPanelOverlay = document.getElementById('kbPanelOverlay');
+        const kbPanelClose = document.getElementById('kbPanelClose');
+        const kbUploadArea = document.getElementById('kbUploadArea');
+        const kbFileInput = document.getElementById('kbFileInput');
+        const kbFileList = document.getElementById('kbFileList');
+        const kbStatusArea = document.getElementById('kbStatusArea');
+
+        let kbFiles = [];
+
+        function showToast(msg, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `kb-toast ${type}`;
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function updateKBBadge() {
+            const count = kbFiles.length;
+            if (count > 0) {
+                kbBadge.textContent = count;
+                kbBadge.classList.add('visible');
+            } else {
+                kbBadge.classList.remove('visible');
+            }
+        }
+
+        function updateKBStatus() {
+            const totalChunks = kbFiles.reduce((sum, f) => sum + parseInt(f.chunks || 0), 0);
+            if (totalChunks > 0) {
+                kbStatusArea.innerHTML = `
+                    <div class="kb-status">
+                        <span class="dot"></span>
+                        知识库已启用，共 ${kbFiles.length} 个文件，${totalChunks} 个文本片段
+                    </div>`;
+            } else {
+                kbStatusArea.innerHTML = '';
+            }
+        }
+
+        function getFileIcon(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            const icons = { txt: '📄', doc: '📝', docx: '📝', pdf: '📕', ppt: '📊', pptx: '📊', xls: '📗', xlsx: '📗' };
+            return icons[ext] || '📄';
+        }
+
+        function renderKBFiles() {
+            updateKBStatus();
+            updateKBBadge();
+            if (kbFiles.length === 0) {
+                kbFileList.innerHTML = '<div class="kb-empty">暂无知识库文件，上传文件后 AI 将基于文件内容回答问题</div>';
+                return;
+            }
+            let html = '<h4>已上传文件</h4>';
+            kbFiles.forEach((file, idx) => {
+                html += `
+                    <div class="kb-file-item">
+                        <span class="kb-file-icon">${getFileIcon(file.name)}</span>
+                        <div class="kb-file-info">
+                            <div class="kb-file-name">${file.name}</div>
+                            <div class="kb-file-meta">${file.chunks} 个片段 · ${file.uploadTime}</div>
+                        </div>
+                    </div>`;
+            });
+            kbFileList.innerHTML = html;
+        }
+
+        async function loadKBFiles() {
+            if (!sessionId) { kbFiles = []; renderKBFiles(); return; }
+            try {
+                const res = await fetch(`/api/kb/files?sessionId=${encodeURIComponent(sessionId)}`);
+                kbFiles = await res.json();
+                renderKBFiles();
+            } catch (e) {
+                console.error('加载知识库文件失败', e);
+            }
+        }
+
+        async function uploadKBFile(file) {
+            if (!sessionId) {
+                showToast('请先选择或创建一个聊天会话', 'error');
+                return;
+            }
+            showToast('正在解析文件...', 'info');
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('sessionId', sessionId);
+            try {
+                const res = await fetch('/api/kb/upload', { method: 'POST', body: formData });
+                const result = await res.json();
+                if (result.success) {
+                    showToast(`✅ 上传成功: ${result.fileName} (${result.chunks} 个片段)`, 'success');
+                    await loadKBFiles();
+                } else {
+                    showToast('❌ 上传失败: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showToast('❌ 上传出错: ' + e.message, 'error');
+            }
+        }
+
+        function openKBPanel() {
+            kbPanelOverlay.classList.add('open');
+            loadKBFiles();
+        }
+
+        function closeKBPanel() {
+            kbPanelOverlay.classList.remove('open');
+        }
+
+        kbBtn.addEventListener('click', openKBPanel);
+        kbPanelClose.addEventListener('click', closeKBPanel);
+        kbPanelOverlay.addEventListener('click', (e) => {
+            if (e.target === kbPanelOverlay) closeKBPanel();
+        });
+
+        kbUploadArea.addEventListener('click', () => kbFileInput.click());
+
+        kbFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                uploadKBFile(e.target.files[0]);
+                e.target.value = '';
+            }
+        });
+
+        kbUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            kbUploadArea.classList.add('dragover');
+        });
+        kbUploadArea.addEventListener('dragleave', () => {
+            kbUploadArea.classList.remove('dragover');
+        });
+        kbUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            kbUploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                uploadKBFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        /**
+         * 添加消息到界面
+         */
+        function addMessage(content, isUser, scrollToBottom = true) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+
+            const label = document.createElement('div');
+            label.className = 'message-label';
+            label.textContent = isUser ? '你' : 'FileAgent';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.textContent = content;
+
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(label);
+            wrapper.appendChild(messageContent);
+
+            messageDiv.appendChild(wrapper);
+            chatMessages.appendChild(messageDiv);
+
+            if (scrollToBottom) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            return messageContent;
+        }
+
+        /**
+         * 发送消息
+         */
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isStreaming) return;
+
+            // 确保有 sessionId
+            if (!sessionId) {
+                sessionId = generateSessionId();
+                sessionLabel.textContent = '当前：' + sessionId;
+            }
+
+            // 添加用户消息
+            addMessage(message, true);
+            messageInput.value = '';
+            isStreaming = true;
+            sendButton.disabled = true;
+
+            // Show typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typingIndicator';
+            typingDiv.className = 'typing-indicator';
+            typingDiv.style.display = 'block';
+            typingDiv.innerHTML = '<span></span><span></span><span></span>';
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Prepare request body
+            const requestBody = { message: message, sessionId: sessionId };
+
+            // Include file attachments if any
+            if (attachedFiles.length > 0) {
+                requestBody.filePaths = attachedFiles.map(f => f.dataUrl);
+                requestBody.fileNames = attachedFiles.map(f => f.name);
+                clearAttachedFiles(); // Clear after sending
+            }
+
+            try {
+                const response = await fetch('/api/chat/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) throw new Error('网络响应错误');
+
+                // 隐藏打字指示器
+                typingDiv.remove();
+
+                // 创建机器人消息容器
+                const botMessageContent = addMessage('', false);
+
+                // 读取流式响应
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullResponse = '';
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine.startsWith('data:')) {
+                            const data = trimmedLine.substring(5).trim();
+                            if (data && data !== '[DONE]') {
+                                fullResponse += data;
+                                botMessageContent.textContent = fullResponse;
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            }
+                        }
+                    }
+                }
+
+                // 处理剩余缓冲区
+                if (buffer.trim().startsWith('data:')) {
+                    const data = buffer.trim().substring(5).trim();
+                    if (data && data !== '[DONE]') {
+                        fullResponse += data;
+                        botMessageContent.textContent = fullResponse;
+                    }
+                }
+
+                // 发送完成后刷新会话列表（确保新会话出现在下拉中）
+                refreshSessionList();
+
+            } catch (error) {
+                typingDiv.remove();
+                addMessage('错误: ' + error.message, false);
+                console.error('Error:', error);
+            } finally {
+                isStreaming = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // === 事件监听 ===
+
+        sendButton.addEventListener('click', sendMessage);
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 新聊天按钮
+        newChatBtn.addEventListener('click', createNewChat);
+
+        // 下拉选择变化
+        sessionSelect.addEventListener('change', (e) => {
+            selectSession(e.target.value);
+        });
+
+        // === 页面加载初始化 ===
+        (async function init() {
+            // 页面加载时加载会话列表
+            await refreshSessionList();
+
+            // 如果存在会话，自动选择最新的（第一个）
+            if (sessionList.length > 0) {
+                selectSession(sessionList[0].sessionId);
+            } else {
+                // 没有历史会话，创建新的
+                createNewChat();
+            }
+        })();
+    </script>
+</body>
+</html>

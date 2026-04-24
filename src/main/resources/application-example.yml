@@ -1,0 +1,25 @@
+# 配置示例 - 复制此文件为 application.yml 并填入你的API Key
+server:
+  port: 8080
+
+spring:
+  application:
+    name: fileAgent
+
+  ai:
+    dashscope:
+      # 请在这里填入你的通义千问API Key
+      # 获取地址: https://dashscope.console.aliyun.com/
+      api-key: sk-your-api-key-here
+      chat:
+        options:
+          model: qwen-plus  # 可选模型: qwen-turbo, qwen-plus, qwen-max
+          temperature: 0.7
+
+# 文件操作配置
+file-agent:
+  # 允许操作的基础目录（安全限制）
+  allowed-base-paths:
+    - D:/workspace
+    - C:/temp
+    - ./data

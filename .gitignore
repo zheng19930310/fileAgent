@@ -1,0 +1,27 @@
+# Windows reserved filename
+nul
+
+# Java
+target/
+*.jar
+*.war
+*.ear
+.classpath
+.project
+.settings/
+bin/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
