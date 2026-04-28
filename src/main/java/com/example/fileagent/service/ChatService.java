@@ -2,6 +2,12 @@ package com.example.fileagent.service;
 
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.example.fileagent.skill.FileTools;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.poi.hwpf.HWPFDocument;
+import org.apache.poi.hwpf.extractor.WordExtractor;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -18,7 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MimeType;
 import reactor.core.publisher.Flux;
 
-import java.io.ByteArrayInputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -179,8 +185,10 @@ public class ChatService {
     }
 
     /**
-     * Build a multimodal UserMessage from text + Data URLs.
-     * filePaths are Data URLs from the frontend (e.g. "data:application/pdf;base64,...")
+     * Build a multimodal UserMessage from text + Data URLs or local file paths.
+     * filePaths can be either:
+     * - Data URLs from the frontend (e.g. "data:application/pdf;base64,...")
+     * - Local file paths (e.g. "D:/workspace/test.txt")
      * fileNames are the original filenames for determining file type.
      */
     private UserMessage buildMultimodalMessage(String text, List<String> filePaths, List<String> fileNames) {
@@ -193,10 +201,18 @@ public class ChatService {
         int count = filePaths != null ? filePaths.size() : 0;
 
         for (int i = 0; i < count; i++) {
-            String dataUrl = filePaths.get(i);
+            String filePath = filePaths.get(i);
             String fileName = (fileNames != null && i < fileNames.size()) ? fileNames.get(i) : "unknown_file";
 
-            FileAttachmentService.FileContent fc = fileAttachmentService.processDataUrl(dataUrl, fileName);
+            FileContent fc;
+            // Check if it's a local file path or Data URL
+            if (filePath.startsWith("data:")) {
+                // Data URL format
+                fc = fileAttachmentService.processDataUrl(filePath, fileName);
+            } else {
+                // Local file path
+                fc = processLocalFile(filePath, fileName);
+            }
 
             if (fc.hasImage()) {
                 // Image: send as Media for vision model
@@ -225,6 +241,108 @@ public class ChatService {
         } else {
             return new UserMessage(textBuilder.toString(), mediaList.toArray(new Media[0]));
         }
+    }
+
+    /**
+     * Process a local file path and extract content
+     */
+    private FileContent processLocalFile(String filePath, String fileName) {
+        try {
+            File file = new File(filePath);
+            if (!file.exists()) {
+                return new FileContent(fileName, null, null, "文件不存在: " + filePath);
+            }
+
+            String ext = getFileExtension(fileName).toLowerCase();
+            
+            // Text files: read directly
+            if (FileAttachmentService.TEXT_EXTENSIONS.contains(ext) || ext.equals(".txt")) {
+                String content = new String(java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                log.info("[LocalFile] 读取文本文件: {}, 长度: {}", fileName, content.length());
+                return new FileContent(fileName, "text/plain", null, content);
+            }
+            
+            // Image files: read as bytes
+            if (FileAttachmentService.IMAGE_EXTENSIONS.contains(ext)) {
+                byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+                String mimeType = getMimeType(ext);
+                log.info("[LocalFile] 读取图片文件: {}, MIME: {}, 大小: {} bytes", fileName, mimeType, bytes.length);
+                return new FileContent(fileName, mimeType, bytes, null);
+            }
+            
+            // Document files: extract text
+            if (FileAttachmentService.DOCUMENT_EXTENSIONS.contains(ext)) {
+                try (InputStream is = new FileInputStream(file)) {
+                    String text = extractDocumentFromBytes(java.nio.file.Files.readAllBytes(file.toPath()), ext);
+                    log.info("[LocalFile] 提取文档文本: {}, 长度: {}", fileName, text.length());
+                    return new FileContent(fileName, "application/octet-stream", null, text);
+                }
+            }
+            
+            // Fallback: try as text
+            try {
+                String content = new String(java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                return new FileContent(fileName, "text/plain", null, content);
+            } catch (Exception e) {
+                return new FileContent(fileName, null, null, "不支持的文件格式: " + ext);
+            }
+            
+        } catch (Exception e) {
+            log.error("[LocalFile] 处理本地文件失败: {}", filePath, e);
+            return new FileContent(fileName, null, null, "处理文件失败: " + e.getMessage());
+        }
+    }
+
+    private String getFileExtension(String fileName) {
+        if (fileName == null) return "";
+        int dotIdx = fileName.lastIndexOf('.');
+        if (dotIdx < 0) return "";
+        return fileName.substring(dotIdx).toLowerCase();
+    }
+
+    private String getMimeType(String ext) {
+        return switch (ext) {
+            case ".jpg", ".jpeg" -> "image/jpeg";
+            case ".png" -> "image/png";
+            case ".gif" -> "image/gif";
+            case ".bmp" -> "image/bmp";
+            case ".webp" -> "image/webp";
+            default -> "application/octet-stream";
+        };
+    }
+
+    private String extractDocumentFromBytes(byte[] bytes, String ext) throws Exception {
+        try (InputStream is = new ByteArrayInputStream(bytes)) {
+            return switch (ext) {
+                case ".pdf" -> {
+                    try (PDDocument doc = PDDocument.load(is)) {
+                        PDFTextStripper stripper = new PDFTextStripper();
+                        yield stripper.getText(doc);
+                    }
+                }
+                case ".docx" -> {
+                    StringBuilder sb = new StringBuilder();
+                    try (XWPFDocument doc = new XWPFDocument(is)) {
+                        for (XWPFParagraph p : doc.getParagraphs()) {
+                            sb.append(p.getText()).append("\n");
+                        }
+                    }
+                    yield sb.toString();
+                }
+                case ".doc" -> {
+                    try (HWPFDocument doc = new HWPFDocument(is);
+                         WordExtractor extractor = new WordExtractor(doc)) {
+                        yield extractor.getText();
+                    }
+                }
+                default -> new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+            };
+        }
+    }
+
+    private record FileContent(String fileName, String mimeType, byte[] bytes, String extractedText) {
+        public boolean hasImage() { return bytes != null && mimeType != null && mimeType.startsWith("image/"); }
+        public boolean hasText() { return extractedText != null && !extractedText.isEmpty(); }
     }
 
     private String processWithTool(List<Message> messages) {

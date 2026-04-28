@@ -26,7 +26,7 @@ public class ChatController {
     /**
      * Non-streaming chat with optional file attachments
      */
-    @PostMapping
+    @PostMapping(produces = "text/plain;charset=UTF-8")
     public String chat(@RequestBody ChatRequest request) {
         String sessionId = request.getSessionId();
         if (sessionId == null || sessionId.isEmpty()) {
@@ -43,7 +43,7 @@ public class ChatController {
     /**
      * Streaming chat with optional file attachments
      */
-    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(value = "/stream", produces = "text/event-stream;charset=UTF-8")
     public Flux<String> streamChat(@RequestBody ChatRequest request) {
         String sessionId = request.getSessionId();
         if (sessionId == null || sessionId.isEmpty()) {
