@@ -204,7 +204,7 @@ public class ChatService {
             String filePath = filePaths.get(i);
             String fileName = (fileNames != null && i < fileNames.size()) ? fileNames.get(i) : "unknown_file";
 
-            FileContent fc;
+            FileAttachmentService.FileContent fc;
             // Check if it's a local file path or Data URL
             if (filePath.startsWith("data:")) {
                 // Data URL format
@@ -246,11 +246,11 @@ public class ChatService {
     /**
      * Process a local file path and extract content
      */
-    private FileContent processLocalFile(String filePath, String fileName) {
+    private FileAttachmentService.FileContent processLocalFile(String filePath, String fileName) {
         try {
             File file = new File(filePath);
             if (!file.exists()) {
-                return new FileContent(fileName, null, null, "文件不存在: " + filePath);
+                return new FileAttachmentService.FileContent(fileName, null, null, "文件不存在: " + filePath);
             }
 
             String ext = getFileExtension(fileName).toLowerCase();
@@ -259,7 +259,7 @@ public class ChatService {
             if (FileAttachmentService.TEXT_EXTENSIONS.contains(ext) || ext.equals(".txt")) {
                 String content = new String(java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
                 log.info("[LocalFile] 读取文本文件: {}, 长度: {}", fileName, content.length());
-                return new FileContent(fileName, "text/plain", null, content);
+                return new FileAttachmentService.FileContent(fileName, "text/plain", null, content);
             }
             
             // Image files: read as bytes
@@ -267,7 +267,7 @@ public class ChatService {
                 byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
                 String mimeType = getMimeType(ext);
                 log.info("[LocalFile] 读取图片文件: {}, MIME: {}, 大小: {} bytes", fileName, mimeType, bytes.length);
-                return new FileContent(fileName, mimeType, bytes, null);
+                return new FileAttachmentService.FileContent(fileName, mimeType, bytes, null);
             }
             
             // Document files: extract text
@@ -275,21 +275,21 @@ public class ChatService {
                 try (InputStream is = new FileInputStream(file)) {
                     String text = extractDocumentFromBytes(java.nio.file.Files.readAllBytes(file.toPath()), ext);
                     log.info("[LocalFile] 提取文档文本: {}, 长度: {}", fileName, text.length());
-                    return new FileContent(fileName, "application/octet-stream", null, text);
+                    return new FileAttachmentService.FileContent(fileName, "application/octet-stream", null, text);
                 }
             }
             
             // Fallback: try as text
             try {
                 String content = new String(java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
-                return new FileContent(fileName, "text/plain", null, content);
+                return new FileAttachmentService.FileContent(fileName, "text/plain", null, content);
             } catch (Exception e) {
-                return new FileContent(fileName, null, null, "不支持的文件格式: " + ext);
+                return new FileAttachmentService.FileContent(fileName, null, null, "不支持的文件格式: " + ext);
             }
             
         } catch (Exception e) {
             log.error("[LocalFile] 处理本地文件失败: {}", filePath, e);
-            return new FileContent(fileName, null, null, "处理文件失败: " + e.getMessage());
+            return new FileAttachmentService.FileContent(fileName, null, null, "处理文件失败: " + e.getMessage());
         }
     }
 
@@ -338,11 +338,6 @@ public class ChatService {
                 default -> new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
             };
         }
-    }
-
-    private record FileContent(String fileName, String mimeType, byte[] bytes, String extractedText) {
-        public boolean hasImage() { return bytes != null && mimeType != null && mimeType.startsWith("image/"); }
-        public boolean hasText() { return extractedText != null && !extractedText.isEmpty(); }
     }
 
     private String processWithTool(List<Message> messages) {

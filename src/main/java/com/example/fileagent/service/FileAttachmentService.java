@@ -23,17 +23,17 @@ public class FileAttachmentService {
 
     private static final Logger log = LoggerFactory.getLogger(FileAttachmentService.class);
 
-    private static final Set<String> IMAGE_EXTENSIONS = Set.of(
+    public static final Set<String> IMAGE_EXTENSIONS = Set.of(
             ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"
     );
-    private static final Set<String> TEXT_EXTENSIONS = Set.of(
+    public static final Set<String> TEXT_EXTENSIONS = Set.of(
             ".txt", ".md", ".csv", ".json", ".xml", ".html", ".css", ".js",
             ".java", ".py", ".ts", ".tsx", ".go", ".rs", ".c", ".cpp", ".h"
     );
-    private static final Set<String> DOCUMENT_EXTENSIONS = Set.of(
+    public static final Set<String> DOCUMENT_EXTENSIONS = Set.of(
             ".pdf", ".doc", ".docx"
     );
-    private static final Set<String> BINARY_EXTENSIONS = Set.of(
+    public static final Set<String> BINARY_EXTENSIONS = Set.of(
             ".xls", ".xlsx", ".ppt", ".pptx"
     );
 
